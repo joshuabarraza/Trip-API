@@ -1,6 +1,8 @@
 import logging
 from fastapi import FastAPI
 from app.config import settings
+from sqlalchemy import text
+from app.db import engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,4 +28,10 @@ def health():
 
 @app.get("/ready")
 def ready():
-    return {"ready": True}
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"ready": True}
+    except Exception as e:
+        logger.exception("DB readiness check failed")
+        return {"ready": False, "error": str(e)}
