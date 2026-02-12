@@ -57,6 +57,12 @@ Proccesses Utilized: schema design, validation, auth, pagination, rate limiting,
   * API keys are stored **hashed**
   * Logs never include raw secrets (keys, webhook URLs, confirmation numbers if sensitive)
 
+# set in .env
+API_KEY = tQen-4bOyT-r0Um-Pa1Zt
+
+# example request
+curl -H "Authorization: Bearer $API_KEY" http://127.0.0.1:8000/v1/trips
+
 ---
 
 ### Data model (conceptual)
