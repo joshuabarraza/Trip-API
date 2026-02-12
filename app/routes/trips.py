@@ -6,8 +6,14 @@ from sqlalchemy.orm import Session
 from app.deps import get_db
 from app.models.trip import Trip
 from app.schemas.trip import TripCreate, TripOut
+from app.middleware.auth import require_api_key
 
-router = APIRouter(prefix = "/v1/trips", tags = ["trips"])
+router = APIRouter(
+    prefix = "/v1/trips",
+    tags = ["trips"],
+    dependencies = [Depends(require_api_key)]
+)
+
 
 
 @router.post("", response_model = TripOut, status_code = 201)
