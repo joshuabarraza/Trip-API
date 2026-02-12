@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Date, Integer, String
+from sqlalchemy.dialects.postgresql import JSONB
 from app.db import Base
 
 
@@ -11,3 +12,4 @@ class Trip(Base):
     start_date = Column(Date, nullable = True)
     end_date = Column(Date, nullable = True)
     status = Column(String, nullable = False, default = "planning")
+    tags = Column(JSONB, nullable = False, default = list)

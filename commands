@@ -1,5 +1,11 @@
-For server:
+# For server:
 python -m uvicorn app.main:app --reload
 
-To quit:
+# To quit:
 Control + C
+
+# Create a migration for changes
+python -m alembic revision --autogenerate -m "(ADD CHANGE NOTE HERE)"
+
+# For pushing changes to Neon
+python -m alembic upgrade head
