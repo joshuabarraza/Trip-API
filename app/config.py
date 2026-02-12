@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     environment: str = "local"
     database_url: str
     api_key: str
+    rate_limit_per_minute: int = 30
 
     model_config = SettingsConfigDict(
         env_file = ".env",

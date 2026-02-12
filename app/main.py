@@ -5,6 +5,13 @@ from sqlalchemy import text
 from app.db import engine
 from app.routes.trips import router as trips_router
 
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi import _rate_limit_exceeded_handler
+
+from app.middleware.rate_limit import limiter
+
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -14,6 +21,10 @@ app = FastAPI(
     version = settings.api_version
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded,
+                          _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 app.include_router(trips_router)
 
 

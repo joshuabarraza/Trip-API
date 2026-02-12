@@ -1,12 +1,15 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
+
 from sqlalchemy.orm import Session
 
 from app.deps import get_db
+from app.middleware.auth import require_api_key
+from app.middleware.rate_limit import limiter
 from app.models.trip import Trip
 from app.schemas.trip import TripCreate, TripOut
-from app.middleware.auth import require_api_key
+
 
 router = APIRouter(
     prefix = "/v1/trips",
@@ -15,9 +18,9 @@ router = APIRouter(
 )
 
 
-
 @router.post("", response_model = TripOut, status_code = 201)
-def create_trip(payload: TripCreate, db: Session = Depends(get_db)):
+@limiter.limit("30/minute")
+def create_trip(request: Request, payload: TripCreate, db: Session = Depends(get_db)):
     trip = Trip(
         title = payload.title,
         destination = payload.destination,
@@ -33,7 +36,9 @@ def create_trip(payload: TripCreate, db: Session = Depends(get_db)):
 
 
 @router.get("", response_model = List[TripOut])
+@limiter.limit("30/minute")
 def list_trips(
+    request: Request,
     limit: int = Query(default = 20, ge = 1, le = 100),
     offset: int = Query(default = 0, ge = 0),
     db: Session = Depends(get_db)
