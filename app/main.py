@@ -4,6 +4,8 @@ from app.config import settings
 from sqlalchemy import text
 from app.db import engine
 from app.routes.trips import router as trips_router
+from app.routes.reservations import router as reservations_router
+
 
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -26,6 +28,7 @@ app.add_exception_handler(RateLimitExceeded,
                           _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 app.include_router(trips_router)
+app.include_router(reservations_router)
 
 
 @app.on_event("startup")
