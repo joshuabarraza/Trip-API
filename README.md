@@ -1,221 +1,182 @@
 # Trip-API
-**Trip API** is a cloud-deployed REST API for planning trips. It was designed to support **trips**, **calendar-style itineraries**, **reservations**, **budgeting by custom categories**, and **Discord webhook reminders**, with production-style **logging, metrics, monitoring, and alerting**.
 
-Proccesses Utilized: schema design, validation, auth, pagination, rate limiting, CI/CD, and observability (logs/metrics/alerts).
+A production-style backend service for managing trips, reservations, and structured financial budgeting.
 
----
-
-### Core features
-
-* **Trips**: Create and manage trips with dates, destination, tags, and a lifecycle status (planning/upcoming/active/completed/archived).
-* **Itinerary**: Calendar-style itinerary items with **start + end time**, location text, tags, and notes.
-* **Reservations**: Standalone reservations (flights/hotels/events) with optional linkage to itinerary items, provider, confirmation data, links, status, and cost.
-* **Budgeting**: Custom budget categories per trip (e.g., lodging/food/transport/activities/custom) and line items tied to reservations (and/or standalone spend entries).
-* **Reporting**: Aggregated spend reporting (totals by category/day/status).
-* **Templates**: Trip templates that can optionally create default budget categories and/or a starter itinerary skeleton.
-* **Reminders**: Discord webhook notifications driven by customizable reminder rules (per trip and/or per reservation).
-* **Exports**: Trip export in **JSON** (full data) and **CSV** (budget and itinerary-friendly formats).
+- Built with Python, FastAPI, PostgreSQL, and SQLAlchemy, this system models relational data with enforced integrity, supports financial reporting endpoints, and provides structured export functionality.
 
 ---
 
-### Tech stack
+## Overview
 
-* **API Framework**: FastAPI (OpenAPI/Swagger built-in)
-* **Database**: Postgres (Neon free tier)
-* **Migrations**: Alembic
-* **Deployment**: Render (or Fly.io)
-* **Observability**:
+This backend API supports:
 
-  * Structured JSON logging (stdout)
-  * Prometheus metrics (`/metrics`)
-  * Grafana Cloud dashboards + alerting (free tier)
-  * Optional: Sentry for error tracking
+* Trip lifecycle management
+* Reservation tracking
+* Categorized expense recording
+* Budget vs. actual financial reporting
+* JSON and CSV data export
+* API key authentication
+* Per-key rate limiting
+* Versioned database migrations
 
----
-
-### High-level architecture
-
-* Clients call the REST API using an **API key**.
-* The API persists data to Postgres and records security-relevant actions in an **audit log**.
-* Observability is first-class:
-
-  * Requests emit structured logs including a `request_id`
-  * Prometheus metrics expose latency/error-rate/rate-limit counters
-  * Grafana Cloud scrapes metrics and triggers alerts
-* Reminders are executed by an external scheduler (e.g., GitHub Actions cron) calling:
-
-  * `POST /v1/jobs/run-reminders`
+The system was designed with production-style architecture principles including relational modeling, constraints, indexed queries, and schema version control.
 
 ---
 
-### Authentication & security
+## Tech Stack
 
-* **Auth**: Single-user API key (`Authorization: Bearer <key>`)
-* **Rate limiting**: Per-key request limits (e.g., per-minute burst control)
-* **Data hygiene**:
-
-  * API keys are stored **hashed**
-  * Logs never include raw secrets (keys, webhook URLs, confirmation numbers if sensitive)
-
-# set in .env
-API_KEY = tQen-4bOyT-r0Um-Pa1Zt
-
-# example request
-curl -H "Authorization: Bearer $API_KEY" http://127.0.0.1:8000/v1/trips
+* Python 3.9+
+* FastAPI
+* PostgreSQL (Neon)
+* SQLAlchemy (ORM)
+* Alembic (migrations)
+* SlowAPI (rate limiting)
+* Pydantic (data validation)
 
 ---
 
-### Data model (conceptual)
+## Core Features
 
-* **Trip**
+### Trip Management
 
-  * `id, title, destination, start_date, end_date, status, tags[], notes, currency`
-* **ItineraryItem**
+* Create, list, and manage trips
+* Track trip status and metadata
+* Pagination support
 
-  * `id, trip_id, start_at, end_at, title, location_text, tags[], notes`
-* **Reservation**
+### Reservations
 
-  * `id, trip_id, itinerary_item_id?`
-  * `type (flight/hotel/event/etc), provider, status`
-  * `confirmation_code?, link_url?, cost_amount?, cost_category_id?`
-* **BudgetCategory**
+* Associate reservations with trips
+* Timezone-aware scheduling
+* Cost estimation
+* Structured metadata (JSONB)
+* Reservation summaries (grouped by type/status)
 
-  * `id, trip_id, name` (custom per trip)
-* **SpendEntry** (optional; can also be derived from reservations)
+### Budget Categories
 
-  * `id, trip_id, category_id, amount, occurred_at, notes`
-* **ReminderRule**
+* Custom categories per trip
+* Planned budget allocation
+* Unique category constraints per trip
 
-  * `id, trip_id, scope (trip|reservation), target_id?, offset_minutes, enabled`
-* **AuditEvent**
+### Spend Entries
 
-  * `id, actor, action, entity_type, entity_id, payload_json, created_at`
+* Record categorized financial transactions
+* Link expenses to reservations and categories
+* Filter by date, currency, reservation, or category
+* Spend summary aggregation
 
----
+### Financial Reporting
 
-### API design highlights
+* Budget vs. actual analysis
+* Categorized expense totals
+* Currency-based aggregation
+* Uncategorized expense tracking
 
-* **Versioned API**: `/v1/...`
-* **Pagination**: list endpoints use `limit` + `offset`
-* **Filtering**: basic filters per resource (e.g., by trip, date range, status)
-* **Consistent errors**: structured error responses with a stable shape for clients
-* **Health endpoints**:
+### Export
 
-  * `GET /health` (liveness)
-  * `GET /ready` (readiness: DB connectivity)
-* **Metrics endpoint**:
+* Full trip export in JSON
+* Spend ledger export in CSV
 
-  * `GET /metrics` (Prometheus format)
+### Infrastructure
 
----
-
-### Example endpoints
-
-**Trips**
-
-* `POST /v1/trips`
-* `GET /v1/trips?limit=&offset=`
-* `GET /v1/trips/{trip_id}`
-* `PATCH /v1/trips/{trip_id}`
-* `DELETE /v1/trips/{trip_id}`
-
-**Itinerary**
-
-* `POST /v1/trips/{trip_id}/itinerary`
-* `GET /v1/trips/{trip_id}/itinerary?from=&to=&limit=&offset=`
-* `PATCH /v1/itinerary/{item_id}`
-* `DELETE /v1/itinerary/{item_id}`
-
-**Reservations**
-
-* `POST /v1/trips/{trip_id}/reservations`
-* `GET /v1/trips/{trip_id}/reservations?status=&limit=&offset=`
-* `PATCH /v1/reservations/{reservation_id}`
-* `DELETE /v1/reservations/{reservation_id}`
-
-**Budget + reporting**
-
-* `POST /v1/trips/{trip_id}/budget/categories`
-* `GET /v1/trips/{trip_id}/budget/categories`
-* `GET /v1/trips/{trip_id}/reports/spend?group_by=category|day|status`
-
-**Templates**
-
-* `POST /v1/templates`
-* `GET /v1/templates`
-* `POST /v1/trips/{trip_id}/apply-template/{template_id}` (options for “categories only” vs “categories + itinerary seed”)
-
-**Reminders**
-
-* `POST /v1/trips/{trip_id}/reminders/rules`
-* `POST /v1/jobs/run-reminders` (invoked by cron)
-* Sends notifications to a configured Discord webhook
-
-**Export**
-
-* `GET /v1/trips/{trip_id}/export.json`
-* `GET /v1/trips/{trip_id}/export.itinerary.csv`
-* `GET /v1/trips/{trip_id}/export.budget.csv`
+* API key authentication (Bearer token)
+* Per-key rate limiting (30 requests/minute)
+* Health and readiness endpoints
+* Alembic-managed schema migrations
 
 ---
 
-### Observability (logging, monitoring, alerting)
+## API Structure
 
-**Structured logs**
+Base path:
 
-* Every request includes: `request_id`, method, path, status_code, latency_ms
-* Errors include exception name + stack trace (without leaking secrets)
+```
+/v1
+```
 
-**Metrics**
+Examples:
 
-* Request counters by route/status
-* Latency histograms (p50/p95/p99)
-* Error counters
-* Rate-limit counters
-* Reminder job success/fail counters + duration
+```
+GET    /v1/trips
+POST   /v1/trips
+GET    /v1/trips/{trip_id}/reservations
+GET    /v1/trips/{trip_id}/spend-entries
+GET    /v1/trips/{trip_id}/budget-categories
+GET    /v1/trips/{trip_id}/budget-summary
+GET    /v1/trips/{trip_id}/export
+```
 
-**Dashboards + alerts**
 
-* Grafana dashboards for:
+## Architecture Highlights
 
-  * error rate
-  * p95 latency
-  * traffic volume
-  * reminder job health
-* Alerts for:
-
-  * elevated 5xx error rate
-  * latency regression
-  * repeated reminder job failures
-
----
-
-### Deployment & CI/CD
-
-* GitHub Actions runs:
-
-  * lint + tests on every PR
-  * deploy on merge to `main`
-* Environment variables are used for:
-
-  * database URL
-  * API key secret(s)
-  * Discord webhook configuration
-  * optional Sentry DSN
+* Relational data modeling using foreign keys and cascading relationships
+* Check constraints and unique constraints to enforce data integrity
+* Indexed fields for optimized query performance
+* Aggregation queries for real-time financial reporting
+* Version-controlled database schema evolution via Alembic
+* Modular route separation by domain (trips, reservations, budgeting, exports)
 
 ---
 
-### Roadmap
+## Steps for Running Locally
 
-* Multi-user: accounts, shared trips, roles
-* Map support: optional `lat/lng` fields + bounding-box queries
-* Strong search: full-text query for title/notes/location
-* File attachments: store ticket PDFs/images in object storage
-* Mobile/web UI client
+### 1. Clone repository
+
+```
+git clone <your-repo-url>
+cd trip-planning-api
+```
+
+### 2. Create virtual environment
+
+```
+python -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```
+pip install -r requirements.txt
+```
+
+### 4. Configure environment variables
+
+Create a `.env` file:
+
+```
+DATABASE_URL=postgresql+psycopg://<user>:<password>@<host>/<db>
+API_KEY=<your_api_key>
+```
+
+### 5. Run migrations
+
+```
+alembic upgrade head
+```
+
+### 6. Start server
+
+```
+uvicorn app.main:app --reload
+```
+
+Server runs at:
+
+```
+http://127.0.0.1:8000
+```
+
+
+## Goals for Future
+
+* Plan to have it designed around a Multi-tenant user model
+* Should have Role-based authentication
+* Scheduled reminders via cron/webhooks
+* Dashboard visualization layer
+* Cloud deployment configuration
 
 ---
 
-If you want, next I can generate:
+## License
 
-1. the **exact endpoint schemas** (request/response JSON) and error format, and
-2. a **database schema** (tables + key constraints) that matches this README section.
+This project is intended for educational and portfolio purposes.
