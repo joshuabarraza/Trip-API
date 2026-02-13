@@ -34,6 +34,15 @@ class SpendEntry(Base):
         index=True,
     )
 
+    category_id = Column(
+        Integer,
+        ForeignKey("budget_categories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    category = relationship("BudgetCategory", backref="spend_entries")
+
     amount = Column(Numeric(12, 2), nullable=False)
     currency = Column(String(3), nullable=False, default="USD")
 

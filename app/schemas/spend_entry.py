@@ -17,6 +17,7 @@ class SpendEntryCreate(BaseModel):
     occurred_at: datetime
     description: Optional[str] = Field(default=None, max_length=200)
     notes: Optional[str] = None
+    category_id: Optional[int] = None
 
     if PYDANTIC_V2:
         model_config = ConfigDict(from_attributes=True)
@@ -32,6 +33,7 @@ class SpendEntryUpdate(BaseModel):
     occurred_at: Optional[datetime] = None
     description: Optional[str] = Field(default=None, max_length=200)
     notes: Optional[str] = None
+    category_id: Optional[int] = None
 
     if PYDANTIC_V2:
         model_config = ConfigDict(from_attributes=True)
@@ -51,6 +53,7 @@ class SpendEntryOut(BaseModel):
     notes: Optional[str]
     created_at: datetime
     updated_at: datetime
+    category_id: Optional[int]
 
     if PYDANTIC_V2:
         model_config = ConfigDict(from_attributes=True)
@@ -67,4 +70,7 @@ class SpendSummaryOut(BaseModel):
     trip_id: int
     total_entries: int = Field(..., examples=[5])
     totals_by_currency: List[SpendCurrencyTotal] = Field(default_factory=list)
+
+
+
 
